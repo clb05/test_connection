@@ -1,0 +1,28 @@
+I'm connecting an ESP32 microcontroller to this app via Socket.IO (the ESP32 uses the arduinoWebSockets/SocketIOclient library, Engine.IO v4 protocol). Before I flash the firmware, please audit the project and answer these specifically — don't just say it's ready, show me the actual code/config that proves it:
+
+1. Socket.IO server config (server/index.js or wherever it's set up)
+
+What port does the Socket.IO server listen on, and is it bound to 0.0.0.0 (required for external devices to reach it)?
+What CORS settings are configured for Socket.IO? Will a raw ESP32 client (not a browser) be allowed to connect?
+Does the server require any authentication, API key, or handshake token before accepting a connection? If so, what exactly does it expect?
+What transport(s) are enabled — websocket only, or polling fallback too?
+
+2. Event contract
+
+List every socket.on('event_name', ...) the server listens for that's meant to receive data from a device (not from the browser UI).
+For each event, show the exact expected payload shape (field names, types, units) — e.g. does it expect {level, lat, lng}, or something else entirely?
+Are there any events the server expects on connect/handshake before it will accept data (like a device registration or identification event)?
+
+3. Frontend consumption (src/App.tsx or wherever the chart/dashboard lives)
+
+What events does the frontend socket.on(...) for, to update the UI/chart?
+Do the field names it expects match what the server passes through from the device?
+
+4. Deployment/uptime
+
+Is this Repl set to "Always On" / deployed as a persistent service, or does it sleep when idle? (If it sleeps, the ESP32 will fail to connect whenever the site isn't already awake.)
+What is the actual public hostname and port I should point the ESP32 at?
+
+5. Overall readiness verdict
+
+Given an ESP32 sending Socket.IO events over SSL/WSS from outside Replit's network, is there anything in the current setup (CORS, auth, sleep behavior, event mismatch) that would block or silently drop that connection? List each blocker found, or confirm there are none.
