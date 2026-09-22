@@ -1,0 +1,23 @@
+Thanks for the audit. I've confirmed I'll connect the ESP32 via the existing HTTP endpoint (POST /api/readings) rather than Socket.IO, since that's the path that's already validated and working. Please make the following changes so it's production-ready for a physical device:
+
+1. Add lightweight authentication to POST /api/readings
+Right now the endpoint has no auth, so anyone who finds the URL can submit fake readings. Please add a simple shared-secret check — a static API key sent as a header (e.g. X-API-Key: <secret>), checked against an environment variable (e.g. DEVICE_API_KEY). Reject with 401 if missing/incorrect. Keep it simple — this is for a single embedded device, not multi-tenant auth, so no need for JWTs, sessions, or a user system.
+
+2. Confirm Autoscale cold-start behavior for this endpoint
+Since the deployment is Autoscale (not Always On), what happens when the ESP32 sends a POST /api/readings request and the instance has scaled to zero? Specifically:
+
+Does the request queue and get served once the instance spins up, or does it time out/fail outright?
+Roughly how long is a cold start, so I can set an appropriate HTTP timeout and retry logic on the ESP32 side?
+
+3. Persistent storage for readings
+You noted readings are currently stored only in memory and are lost on restart/rescale. For a flood-monitoring use case, losing history on every scale-down isn't ideal. Please add lightweight persistence (Replit DB, SQLite, or whatever's simplest here) so readings survive restarts, at least for the last N readings or last 24-48 hours.
+
+4. Confirm the exact request format I should send
+Please reconfirm, as a single example I can copy directly into ESP32 code:
+
+Full URL (https://testconnection--webbasedpersona.replit.app/api/readings)
+Required headers (Content-Type, plus the new X-API-Key once added)
+A complete example JSON body using lat/lng (not latitude/longitude) since that's simpler for the embedded side
+The exact success response (status code + body) so I know how to detect success/failure from the ESP32
+
+5. (Optional, skip if not needed) If you still want a Socket.IO path from the device in addition to HTTP, add a reading:send event listener on the server that runs the same validation as /api/readings and rebroadcasts via reading:new — but I'd lean toward HTTP-only given the Autoscale setup, unless there's a specific reason you need the device itself to hold a live socket.

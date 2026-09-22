@@ -1,30 +1,57 @@
 import http from 'node:http'
 import path from 'node:path'
+import { timingSafeEqual } from 'node:crypto'
 import cors from 'cors'
 import express from 'express'
+import pg from 'pg'
 import { Server as SocketIOServer } from 'socket.io'
 
 const PORT = Number.parseInt(process.env.PORT ?? '3001', 10)
 const TEN_MINUTES = 10 * 60 * 1000
+const RETENTION_HOURS = Number.parseInt(process.env.READING_RETENTION_HOURS ?? '48', 10)
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? '*'
 const ENABLE_DEMO_DATA = process.env.ENABLE_DEMO_DATA === 'true'
+const DEVICE_API_KEY = process.env.DEVICE_API_KEY ?? ''
+const { Pool } = pg
 
 const app = express()
 const httpServer = http.createServer(app)
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const io = new SocketIOServer(httpServer, {
   cors: {
     origin: FRONTEND_ORIGIN,
   },
 })
 
-const readings = []
-let nextReadingId = 1
-
 app.use(cors({ origin: FRONTEND_ORIGIN }))
 app.use(express.json({ limit: '32kb' }))
 
-function getDeviceStatus() {
-  const latest = readings.at(-1)
+function serializeReading(row) {
+  return {
+    id: `reading-${row.id}`,
+    level: row.level,
+    lat: row.lat,
+    lng: row.lng,
+    timestamp: new Date(row.timestamp).toISOString(),
+    receivedAt: new Date(row.received_at).toISOString(),
+    smsSent: Boolean(row.sms_sent),
+    ...(row.status ? { status: row.status } : {}),
+    ...(row.battery == null ? {} : { battery: Number(row.battery) }),
+  }
+}
+
+async function getLatestReading() {
+  const result = await pool.query(`
+    SELECT id, level, lat, lng, timestamp, received_at, sms_sent, status, battery
+    FROM flood_readings
+    ORDER BY received_at DESC, id DESC
+    LIMIT 1
+  `)
+  return result.rows[0] ? serializeReading(result.rows[0]) : null
+}
+
+async function getDeviceStatus() {
+  const latest = await getLatestReading()
   const lastSeenAt = latest?.receivedAt ?? null
   const online = lastSeenAt ? Date.now() - new Date(lastSeenAt).getTime() <= TEN_MINUTES : false
   return {
@@ -60,57 +87,51 @@ function parseReading(body) {
   }
 
   return {
-    id: `reading-${nextReadingId++}`,
     level,
     lat,
     lng,
     timestamp: timestamp.toISOString(),
-    receivedAt: new Date().toISOString(),
-    smsSent: false,
     ...(status ? { status } : {}),
     ...(battery !== undefined ? { battery } : {}),
   }
 }
 
-// Demo-only seed data keeps the dashboard useful before the first ESP32 reading.
-// Remove this block for a real deployment that should start with an empty history.
-function seedDemoReadings() {
-  const demoLocation = { lat: 14.5995, lng: 120.9842 }
-  const samples = [
-    { level: 1, hoursAgo: 48, latOffset: 0.0008, lngOffset: -0.0006 },
-    { level: 0, hoursAgo: 40, latOffset: 0.0005, lngOffset: -0.0002 },
-    { level: 2, hoursAgo: 32, latOffset: 0.0002, lngOffset: 0.0003 },
-    { level: 3, hoursAgo: 26, latOffset: -0.0003, lngOffset: 0.0006 },
-    { level: 4, hoursAgo: 20, latOffset: -0.0005, lngOffset: 0.0004 },
-    { level: 3, hoursAgo: 14, latOffset: -0.0002, lngOffset: 0.0001 },
-    { level: 2, hoursAgo: 8, latOffset: 0.0001, lngOffset: -0.0003 },
-    { level: 3, hoursAgo: 4, latOffset: 0.0004, lngOffset: -0.0005 },
-    { level: 2, hoursAgo: 2, latOffset: 0.0006, lngOffset: -0.0002 },
-    { level: 3, hoursAgo: 0.08, latOffset: 0.0007, lngOffset: 0.0001 },
-  ]
+function hasValidDeviceApiKey(request) {
+  if (!DEVICE_API_KEY) return false
+  const provided = request.get('x-api-key') ?? ''
+  const expectedBuffer = Buffer.from(DEVICE_API_KEY)
+  const providedBuffer = Buffer.from(provided)
+  return expectedBuffer.length === providedBuffer.length && timingSafeEqual(expectedBuffer, providedBuffer)
+}
 
-  for (const sample of samples) {
-    const timestamp = new Date(Date.now() - sample.hoursAgo * 60 * 60 * 1000)
-    readings.push({
-      id: `reading-${nextReadingId++}`,
-      level: sample.level,
-      lat: demoLocation.lat + sample.latOffset,
-      lng: demoLocation.lng + sample.lngOffset,
-      timestamp: timestamp.toISOString(),
-      receivedAt: timestamp.toISOString(),
-      smsSent: sample.level >= 3,
-    })
+function requireDeviceApiKey(request, response, next) {
+  if (!DEVICE_API_KEY) {
+    response.status(503).json({ error: 'Device API key is not configured' })
+    return
   }
+  if (!hasValidDeviceApiKey(request)) {
+    response.status(401).json({ error: 'Missing or invalid device API key' })
+    return
+  }
+  next()
 }
 
-if (ENABLE_DEMO_DATA) {
-  seedDemoReadings()
+async function storeReading(reading) {
+  const result = await pool.query(
+    `
+      INSERT INTO flood_readings (level, lat, lng, timestamp, status, battery)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, level, lat, lng, timestamp, received_at, sms_sent, status, battery
+    `,
+    [reading.level, reading.lat, reading.lng, reading.timestamp, reading.status ?? null, reading.battery ?? null],
+  )
+  await pool.query('DELETE FROM flood_readings WHERE received_at < NOW() - ($1 * INTERVAL \'1 hour\')', [RETENTION_HOURS])
+  return serializeReading(result.rows[0])
 }
 
-app.post('/api/readings', (request, response) => {
+app.post('/api/readings', requireDeviceApiKey, async (request, response) => {
   try {
-    const reading = parseReading(request.body)
-    readings.push(reading)
+    const reading = await storeReading(parseReading(request.body))
     io.emit('reading:new', reading)
     response.status(201).json(reading)
   } catch (error) {
@@ -118,16 +139,38 @@ app.post('/api/readings', (request, response) => {
   }
 })
 
-app.get('/api/readings/latest', (_request, response) => {
-  response.json(readings.at(-1) ?? null)
+app.get('/api/readings/latest', async (_request, response) => {
+  try {
+    response.json(await getLatestReading())
+  } catch (error) {
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to load latest reading' })
+  }
 })
 
-app.get('/api/readings/history', (_request, response) => {
-  response.json(readings.slice().reverse())
+app.get('/api/readings/history', async (_request, response) => {
+  try {
+    const result = await pool.query(
+      `
+        SELECT id, level, lat, lng, timestamp, received_at, sms_sent, status, battery
+        FROM flood_readings
+        WHERE received_at >= NOW() - ($1 * INTERVAL '1 hour')
+        ORDER BY received_at DESC, id DESC
+        LIMIT 1000
+      `,
+      [RETENTION_HOURS],
+    )
+    response.json(result.rows.map(serializeReading))
+  } catch (error) {
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to load reading history' })
+  }
 })
 
-app.get('/api/device/status', (_request, response) => {
-  response.json(getDeviceStatus())
+app.get('/api/device/status', async (_request, response) => {
+  try {
+    response.json(await getDeviceStatus())
+  } catch (error) {
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to load device status' })
+  }
 })
 
 app.get('/health', (_request, response) => {
@@ -150,9 +193,22 @@ app.use((request, response, next) => {
 })
 
 io.on('connection', (socket) => {
-  socket.emit('device:status', getDeviceStatus())
+  getDeviceStatus()
+    .then((status) => socket.emit('device:status', status))
+    .catch(() => socket.emit('device:status', { online: false, lastSeenAt: null, status: null, battery: null }))
 })
 
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`FLOOD_ALERT backend listening on port ${PORT}`)
+async function start() {
+  if (!Number.isInteger(RETENTION_HOURS) || RETENTION_HOURS < 24) {
+    throw new Error('READING_RETENTION_HOURS must be an integer of at least 24')
+  }
+  await pool.query('SELECT 1')
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`FLOOD_ALERT backend listening on port ${PORT}`)
+  })
+}
+
+start().catch((error) => {
+  console.error('FLOOD_ALERT backend failed to start:', error)
+  process.exitCode = 1
 })
