@@ -1,18 +1,26 @@
 import http from 'node:http'
 import path from 'node:path'
+import cors from 'cors'
 import express from 'express'
 import { Server as SocketIOServer } from 'socket.io'
 
 const PORT = Number.parseInt(process.env.PORT ?? '3001', 10)
 const TEN_MINUTES = 10 * 60 * 1000
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? '*'
+const ENABLE_DEMO_DATA = process.env.ENABLE_DEMO_DATA === 'true'
 
 const app = express()
 const httpServer = http.createServer(app)
-const io = new SocketIOServer(httpServer)
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: FRONTEND_ORIGIN,
+  },
+})
 
 const readings = []
 let nextReadingId = 1
 
+app.use(cors({ origin: FRONTEND_ORIGIN }))
 app.use(express.json({ limit: '32kb' }))
 
 function getDeviceStatus() {
@@ -95,7 +103,9 @@ function seedDemoReadings() {
   }
 }
 
-seedDemoReadings()
+if (ENABLE_DEMO_DATA) {
+  seedDemoReadings()
+}
 
 app.post('/api/readings', (request, response) => {
   try {
