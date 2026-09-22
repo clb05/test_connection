@@ -10,7 +10,6 @@ const PORT = Number.parseInt(process.env.PORT ?? '3001', 10)
 const TEN_MINUTES = 10 * 60 * 1000
 const RETENTION_HOURS = Number.parseInt(process.env.READING_RETENTION_HOURS ?? '48', 10)
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? '*'
-const ENABLE_DEMO_DATA = process.env.ENABLE_DEMO_DATA === 'true'
 const DEVICE_API_KEY = process.env.DEVICE_API_KEY ?? ''
 const { Pool } = pg
 

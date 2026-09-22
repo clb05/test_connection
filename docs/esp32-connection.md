@@ -30,8 +30,8 @@ Optional fields:
 
 The `timestamp` field is optional. If omitted, the server uses its receive time.
 
-`level` must be an integer from `0` to `4`. `latitude` and `longitude` must
-be valid GPS coordinates. The server also accepts `lat` and `lng` as aliases.
+`level` must be an integer from `0` to `4`. `lat` and `lng` must be valid GPS
+coordinates. The server also accepts `latitude` and `longitude` as aliases.
 After a valid request, it returns HTTP `201` and broadcasts the reading to
 the dashboard over Socket.IO, so an open dashboard updates immediately.
 Readings are stored in PostgreSQL and retained for the configured 48-hour
