@@ -1,0 +1,18 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+[remote "gitsafe-backup"]
+	url = git://gitsafe:5418/backup.git
+	fetch = +refs/heads/*:refs/remotes/gitsafe-backup/*
+	skipFetchAll = true
+	lfsurl = http://gitsafe:5419
+[remote "origin"]
+	url = https://github.com/clb05/test_connection.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+[lfs "http://gitsafe:5419"]
+	locksverify = false

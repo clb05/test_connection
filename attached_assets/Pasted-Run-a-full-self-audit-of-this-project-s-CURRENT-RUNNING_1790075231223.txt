@@ -1,0 +1,57 @@
+Run a full self-audit of this project's CURRENT RUNNING STATE and report
+back with ACTUAL COMMAND OUTPUT as proof for every item below - not a
+summary or description of what should be true. If something can't be
+verified with real output, say so explicitly rather than describing
+intended behavior.
+
+1. FILES - does the backend actually exist on disk right now?
+   - Run: ls -la server/
+   - Paste the full contents of server/index.js
+   - Run: cat package.json
+   - Run: cat .replit (or the current deployment config file)
+
+2. BACKEND - do the endpoints actually respond right now?
+   Start the server if it isn't running, then run each of these against
+   localhost and paste the RAW response for each:
+   - curl -i http://localhost:$PORT/health
+   - curl -i http://localhost:$PORT/api/readings/latest
+   - curl -i http://localhost:$PORT/api/readings/history
+   - curl -i http://localhost:$PORT/api/device/status
+   - curl -i -X POST http://localhost:$PORT/api/readings -H "Content-Type: application/json" -d '{"level":3,"lat":14.5995,"lng":120.9842,"timestamp":"2026-09-22T08:00:00.000Z"}'
+   - curl -i -X POST http://localhost:$PORT/api/readings -H "Content-Type: application/json" -d '{"level":99}'  (should return 400, paste the actual error response)
+
+3. FRONTEND - does the production build actually succeed right now?
+   - Run: pnpm build
+   - Paste the full terminal output, including any errors or warnings
+   - Run: ls -la dist/ and confirm index.html and assets actually exist
+   - Run: pnpm exec tsc --noEmit and paste the output
+
+4. DEPLOYMENT - is it actually published and reachable right now?
+   - State the exact current deployment target (Static/Autoscale/Reserved VM)
+     by checking the actual Replit deployment settings, not from memory
+   - State the exact current published URL
+   - Run: curl -i <published-url>/health and paste the real response
+   - If the currently published version doesn't match the current code
+     (e.g. old Static deployment still live while code has since changed),
+     say so explicitly
+
+5. DEMO DATA - does the seed data actually load right now?
+   - Paste the exact code block where seed data is defined
+   - Restart the server and paste the actual GET /api/readings/history
+     response showing the seeded entries are really there
+
+6. LIVE UPDATES - does Socket.io actually work right now?
+   - Describe how you tested it and paste any console/log output showing
+     a "reading:new" event actually being emitted and received after a
+     POST request
+
+7. FINAL STATE - honest summary
+   - List exactly what is confirmed working right now, with the evidence
+     above as proof
+   - List exactly what is NOT working, NOT built yet, or NOT verified,
+     even if it was planned or described before
+   - State the single exact URL that is currently live and reachable,
+     if any
+
+Do not mark anything as verified, passing, working, or complete unless the
+actual command output is pasted directly above the claim as evidence.

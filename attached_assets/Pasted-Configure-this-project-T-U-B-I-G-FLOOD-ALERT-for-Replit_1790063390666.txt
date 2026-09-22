@@ -1,0 +1,47 @@
+Configure this project (T.U.B.I.G. / FLOOD_ALERT) for Replit Autoscale
+deployment, serving both frontend and backend from a single deployment.
+This deployment is for a one-time presentation/demo, not permanent
+production use, so prioritize "looks complete and works reliably during a
+live demo" over long-term scaling concerns.
+
+DEPLOYMENT SETUP
+- In server/index.js, after all existing API routes and Socket.io setup,
+  add express.static() pointing at the frontend's built dist/ folder, plus
+  a catch-all route serving dist/index.html for client-side routing
+  (react-router-dom needs this fallback)
+- Ensure the server listens on 0.0.0.0 and on process.env.PORT, since
+  Autoscale assigns the port at runtime
+- Change the deployment config from the current "static" deploymentTarget
+  to Autoscale (Node.js), removing the separate frontend-only static
+  deployment
+- Set VITE_API_URL to "/" (same-origin) since frontend and backend are now
+  served from the same domain
+- Simplify/remove FRONTEND_ORIGIN CORS restrictions since same-origin
+  requests won't need them
+- Ensure the build step runs "pnpm build" before the server starts, so
+  dist/ exists at boot
+
+DEMO-READINESS
+- Seed the in-memory readings array with a handful of realistic sample
+  readings on server startup (varying levels 0-4, timestamps spread over
+  the last 24-48 hours, plausible lat/lng near the device's intended
+  location) so the dashboard's chart and history list don't look empty
+  before any real ESP32 data arrives
+- Add a short code comment noting this seed data is for demo purposes and
+  can be removed for real deployment
+- Confirm the dashboard still correctly replaces/appends seed data with
+  real POST /api/readings data when it arrives, rather than being
+  overwritten or duplicated incorrectly
+
+VERIFICATION
+- Deploy to Autoscale and confirm the public URL loads the full dashboard,
+  including seeded sample data, after a cold start
+- POST a test reading to <url>/api/readings and confirm it appears live on
+  the dashboard via Socket.io without a page refresh
+- Confirm GET /health, /api/readings/latest, /api/readings/history, and
+  /api/device/status all respond correctly on the deployed URL
+- Report back the final public Autoscale deployment URL
+
+Note: this deployment will be "woken up" a few minutes before the
+presentation by loading the page manually, so cold-start delay during the
+actual demo is not a concern to optimize away.

@@ -1,0 +1,24 @@
+The GitHub repo at https://github.com/clb05/update-alarm is missing the entire server/ directory — it only has the frontend. The published package.json on GitHub has no express, socket.io, socket.io-client, or cors in dependencies, and no server script. I need the backend committed and pushed so GitHub matches the actual working Replit project. Do NOT just tell me it's done — paste the actual command output for every step.
+
+Confirm git state first:
+Run: git status
+Run: cat .gitignore and paste it — check specifically whether server/, .env, or node_modules are excluding anything that shouldn't be
+Run: git ls-files server/ — if this returns nothing, server/index.js has never been tracked by git, confirm that explicitly
+Stage and commit the backend:
+Run: git add server/ package.json (and .env.example if not already tracked)
+Run: git status again and paste the output showing exactly what's staged
+Run: git diff --cached --stat to show the real diff size
+Commit with a clear message, e.g. git commit -m "Add Express/Socket.io backend (server/index.js) — previously untracked"
+Push and verify remotely:
+Run: git push origin main
+Paste the real push output (not a summary)
+Run: git log --oneline -5 and paste it
+Confirm it actually landed on GitHub:
+Run: curl -s https://api.github.com/repos/clb05/update-alarm/contents/server and paste the raw JSON response — it should list index.js and .env.example
+Run: curl -s https://raw.githubusercontent.com/clb05/update-alarm/main/package.json and paste it — confirm express, socket.io, cors now appear in dependencies and "server": "node server/index.js" appears in scripts
+Final state — say explicitly:
+Whether server/index.js is now present in the GitHub repo (with proof from step 4, not an assumption)
+Whether package.json on GitHub now matches the one currently running in the Replit workspace
+Whether anything was excluded (e.g. .env with real credentials) and confirm that was intentional, not accidental
+
+Do not report success on any step unless the actual output is pasted directly above the claim.

@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-navy-950: #050d1a;
+  --color-navy-900: #071222;
+  --color-navy-800: #0a1a30;
+  --color-navy-700: #0e2444;
+  --color-navy-600: #143260;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-300: #67e8f9;
+  --color-cyan-200: #a5f3fc;
+  --color-teal-400: #2dd4bf;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #e2e8f0;
+  background: #050d1a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: #050d1a; color: #e2e8f0; }
+button, input, select { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
+::selection { background: #164e63; color: #cffafe; }
+
+* { scrollbar-width: thin; scrollbar-color: rgba(34, 211, 238, 0.25) transparent; }
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.25); border-radius: 2px; }
+
+/* Preserve the original Figma dark surface when functional views use shared card utilities. */
+.bg-white { background-color: #0a1a30 !important; }
+.bg-white\/95, .bg-white\/90 { background-color: rgba(7, 18, 34, 0.96) !important; }
+.bg-slate-50 { background-color: #071222 !important; }
+.bg-slate-100 { background-color: #0e2444 !important; }
+.bg-blue-50 { background-color: rgba(34, 211, 238, 0.1) !important; }
+.bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
+.bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+.bg-red-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
+.bg-\[\#e8eef0\] { background-color: #071222 !important; }
+.bg-\[\#f5f7fa\] { background-color: #050d1a !important; }
+.text-slate-950 { color: #f8fafc !important; }
+.text-slate-900 { color: #f1f5f9 !important; }
+.text-slate-800 { color: #e2e8f0 !important; }
+.text-slate-700 { color: #cbd5e1 !important; }
+.text-slate-600 { color: #94a3b8 !important; }
+.text-slate-500 { color: #64748b !important; }
+.text-slate-400 { color: #94a3b8 !important; }
+.text-blue-600 { color: #22d3ee !important; }
+.text-amber-600 { color: #fbbf24 !important; }
+.text-emerald-600 { color: #34d399 !important; }
+.text-emerald-700 { color: #6ee7b7 !important; }
+.text-red-600 { color: #f87171 !important; }
+.text-red-700 { color: #fca5a5 !important; }
+.border-slate-200, .border-slate-100 { border-color: rgba(34, 211, 238, 0.2) !important; }
+.divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(34, 211, 238, 0.12) !important; }
+.ring-slate-200\/80 { --tw-ring-color: rgba(34, 211, 238, 0.2) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}

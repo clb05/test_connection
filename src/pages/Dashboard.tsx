@@ -1,0 +1,66 @@
+import { Link } from 'react-router-dom'
+import { ArrowUpRight, Clock3, ExternalLink, MapPin, RefreshCw, ShieldAlert, Smartphone, Waves } from 'lucide-react'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useFloodData } from '../hooks/useFloodData'
+import { FLOOD_LEVELS } from '../data/mockFloodData'
+import { StatusIcon } from '../components/StatusIcon'
+import LevelBadge from '../components/LevelBadge'
+import type { FloodLevel } from '../types'
+
+const formatTime = (timestamp: string) => new Intl.DateTimeFormat('en-PH', { hour: 'numeric', minute: '2-digit' }).format(new Date(timestamp))
+const formatDateTime = (timestamp: string) => new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(timestamp))
+const relativeTime = (timestamp: string) => {
+  const diff = Math.max(0, Date.now() - new Date(timestamp).getTime())
+  const minutes = Math.floor(diff / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.floor(minutes / 60)
+  return `${hours} hr${hours === 1 ? '' : 's'} ago`
+}
+
+function MapCard({ lat, lng }: { lat: number; lng: number }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 className="text-sm font-bold text-slate-950">Station location</h2><p className="mt-1 text-xs text-slate-500">GPS position from NEO-6M</p></div><a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 transition hover:text-slate-950">Open map <ExternalLink size={13} /></a></div>
+      <div className="relative h-56 overflow-hidden bg-[#e8eef0] sm:h-64">
+        <div className="absolute inset-0 opacity-50" style={{ backgroundImage: 'linear-gradient(#b6c8c9 1px, transparent 1px), linear-gradient(90deg, #b6c8c9 1px, transparent 1px)', backgroundSize: '42px 42px' }} />
+        <svg viewBox="0 0 800 360" className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden="true"><path d="M0 63 C90 30 120 100 190 89 S280 70 339 122 S425 184 496 151 S588 46 675 92 S745 64 800 78 L800 0 L0 0 Z" fill="#d5e3e1" /><path d="M0 290 C97 257 138 321 213 276 S333 220 407 270 S520 315 601 264 S718 235 800 269 L800 360 L0 360 Z" fill="#d2e0df" /><path d="M80 0 C166 60 192 110 280 136 S415 133 479 74 S593 47 681 120 S732 235 800 248" fill="none" stroke="#9ab7b7" strokeWidth="14" opacity=".75" /><path d="M0 190 C95 175 155 196 252 176 S390 143 478 198 S608 249 800 183" fill="none" stroke="#f6f8f7" strokeWidth="10" /></svg>
+        <div className="absolute left-[52%] top-[48%] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"><div className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-red-600 text-white shadow-[0_4px_16px_rgba(220,38,38,0.35)]"><MapPin size={21} fill="currentColor" /></div><div className="mt-1 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-800 shadow-sm">FLD-042</div></div>
+        <div className="absolute bottom-3 left-3 rounded-lg bg-white/90 px-3 py-2 font-mono text-[10px] font-semibold text-slate-500 shadow-sm">{lat.toFixed(4)}° N · {lng.toFixed(4)}° E</div>
+      </div>
+    </section>
+  )
+}
+
+export default function Dashboard() {
+  const { data, isDemo, isRefreshing, refresh } = useFloodData()
+  const status = FLOOD_LEVELS[data.currentLevel]
+  const stale = Date.now() - new Date(data.lastReadingAt).getTime() > 10 * 60_000
+  const chartData = data.levelReadings.map((item) => ({ ...item, time: formatTime(item.timestamp) }))
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-400"><span className="h-2 w-2 rounded-full bg-red-500" /> Live monitoring</div><h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Good morning, Barangay Riverside</h1><p className="mt-1 text-sm text-slate-500">Here’s the latest water-level status from your field station.</p></div><button onClick={() => void refresh()} disabled={isRefreshing} className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-950 disabled:opacity-60"><RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} /> Refresh data</button></div>
+
+      <section className="relative overflow-hidden rounded-2xl border p-5 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:p-8" style={{ backgroundColor: status.softColor, borderColor: `${status.color}35` }} aria-live="polite">
+        <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full opacity-30" style={{ backgroundColor: status.color }} />
+        <div className="relative flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-5 sm:gap-7"><div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm sm:h-28 sm:w-28" style={{ color: status.iconColor }}><StatusIcon level={data.currentLevel} size={54} /></div><div><div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em]" style={{ color: status.textColor }}>Current water level</div><div className="mt-1 flex items-baseline gap-3"><span className="text-6xl font-extrabold leading-none tracking-[-0.07em] sm:text-8xl" style={{ color: status.color }}>{data.currentLevel}</span><span className="text-sm font-bold text-slate-500">of 4</span></div><h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl" style={{ color: status.textColor }}>{status.label}</h2></div></div>
+          <div className="flex max-w-xs flex-col gap-3 border-t border-black/10 pt-5 md:border-l md:border-t-0 md:pl-8 md:pt-0"><div className="flex items-center gap-2 text-sm font-bold" style={{ color: status.textColor }}><ShieldAlert size={17} /> {data.currentLevel >= 3 ? 'Attention may be required' : 'No action required'}</div><p className="text-xs leading-5 text-slate-600">{data.currentLevel >= 3 ? 'Water levels are elevated. Please review the latest readings and keep response teams informed.' : 'The station is reporting within expected levels.'}</p></div>
+        </div>
+      </section>
+
+      <div className={`flex flex-col justify-between gap-3 rounded-xl border px-4 py-3 text-sm sm:flex-row sm:items-center ${stale ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-slate-200 bg-white text-slate-600'}`}><div className="flex items-center gap-2 font-semibold"><Clock3 size={16} className={stale ? 'text-amber-600' : 'text-slate-400'} /><span>Last updated {relativeTime(data.lastReadingAt)}</span><span className="hidden text-slate-300 sm:inline">·</span><span className="hidden text-xs font-normal text-slate-500 sm:inline">{formatDateTime(data.lastReadingAt)}</span></div><div className="flex items-center gap-2 text-xs font-semibold"><span className={`h-2 w-2 rounded-full ${data.deviceOnline ? 'bg-emerald-500' : 'bg-red-500'}`} />{data.deviceOnline ? 'Device online' : 'Device offline'}{stale && <span className="font-bold text-amber-700">· Stale reading</span>}{isDemo && <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] uppercase tracking-wide text-slate-500">Demo data</span>}</div></div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
+        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)] sm:p-6"><div className="flex items-start justify-between"><div><h2 className="text-sm font-bold text-slate-950">Water-level trend</h2><p className="mt-1 text-xs text-slate-500">Last 2 hours · readings every 5 minutes</p></div><div className="flex items-center gap-2 text-xs font-semibold text-slate-500"><Waves size={15} /> Sensor average</div></div><div className="mt-6 h-64 w-full"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{ top: 8, right: 0, left: -22, bottom: 0 }}><defs><linearGradient id="levelFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={status.color} stopOpacity={0.24} /><stop offset="100%" stopColor={status.color} stopOpacity={0.02} /></linearGradient></defs><CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="4 4" /><XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} minTickGap={28} /><YAxis domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} /><Tooltip cursor={{ stroke: '#cbd5e1', strokeDasharray: '4 4' }} contentStyle={{ border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 24px rgba(15,23,42,.08)', fontSize: 12 }} formatter={(value: unknown) => { const numericValue = Number(value); return [Number.isInteger(numericValue) && numericValue in FLOOD_LEVELS ? FLOOD_LEVELS[numericValue as FloodLevel].label : '', 'Level'] }} labelFormatter={(label) => `At ${label}`} /><Area type="monotone" dataKey="level" stroke={status.color} strokeWidth={3} fill="url(#levelFill)" dot={(props: any) => { const item = chartData[props.index] ?? chartData[0]; if (!item) return null; return <circle key={`dot-${props.index ?? 0}`} cx={props.cx} cy={props.cy} r={3.5} fill={FLOOD_LEVELS[item.level].color} stroke="white" strokeWidth={2} /> }} /></AreaChart></ResponsiveContainer></div><div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-100 pt-4">{([0, 1, 2, 3, 4] as FloodLevel[]).map((level) => <div key={level} className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: FLOOD_LEVELS[level].color }} />{FLOOD_LEVELS[level].shortLabel}</div>)}</div></section>
+        <MapCard lat={data.location.lat} lng={data.location.lng} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)] sm:p-6"><div className="flex items-start justify-between"><div><h2 className="text-sm font-bold text-slate-950">Recent readings</h2><p className="mt-1 text-xs text-slate-500">Latest activity from the field station</p></div><Link to="/history" className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 transition hover:text-slate-950">View all <ArrowUpRight size={14} /></Link></div><div className="mt-5 divide-y divide-slate-100">{data.history.slice(0, 5).map((reading) => <div key={reading.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="flex min-w-0 items-center gap-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ color: FLOOD_LEVELS[reading.level].color, backgroundColor: FLOOD_LEVELS[reading.level].softColor }}><StatusIcon level={reading.level} size={16} /></div><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{FLOOD_LEVELS[reading.level].label}</p><p className="mt-0.5 text-[11px] text-slate-400">{formatDateTime(reading.timestamp)}</p></div></div><div className="flex shrink-0 items-center gap-2">{reading.smsSent && <span className="hidden items-center gap-1 text-[10px] font-bold text-emerald-600 sm:flex"><Smartphone size={12} /> SMS sent</span>}<LevelBadge level={reading.level} compact /></div></div>)}</div></section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)] sm:p-6"><div className="flex items-start justify-between"><div><h2 className="text-sm font-bold text-slate-950">Station health</h2><p className="mt-1 text-xs text-slate-500">ESP32 field device · FLD-042</p></div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${data.deviceOnline ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{data.deviceOnline ? 'Online' : 'Offline'}</span></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3.5"><p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Sensors</p><p className="mt-2 text-lg font-extrabold text-slate-900">4 <span className="text-xs font-semibold text-emerald-600">active</span></p></div><div className="rounded-xl bg-slate-50 p-3.5"><p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Signal</p><p className="mt-2 text-lg font-extrabold text-slate-900">Strong <span className="text-xs font-semibold text-emerald-600">●●●</span></p></div></div><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-xs"><span className="font-semibold text-slate-500">Last device check-in</span><span className="font-bold text-slate-800">{relativeTime(data.deviceLastSeenAt)}</span></div></section>
+      </div>
+    </div>
+  )
+}
